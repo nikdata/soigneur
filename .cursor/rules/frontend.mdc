@@ -1,0 +1,106 @@
+---
+description: Frontend conventions for Soigneur — Jinja2, HTMX, and CSS
+alwaysApply: true
+---
+
+# Frontend Conventions
+
+## Stack
+- **Jinja2** — server-side HTML templating
+- **HTMX** — dynamic updates without JavaScript frameworks
+- **Plain CSS** — no Tailwind, no Bootstrap, no CSS-in-JS
+
+## No JavaScript Frameworks
+Do not introduce React, Vue, Alpine.js, or any JS framework.
+HTMX handles all dynamic behavior. If you find yourself writing significant
+JavaScript, stop and reconsider — there is almost certainly an HTMX approach.
+
+## Template Structure
+```
+app/templates/
+  base.html          # Base layout: nav, CSS links, HTMX script tag
+  index.html         # Main page: calendar + chat layout
+  partials/          # Reusable fragments returned by HTMX requests
+    calendar.html    # Calendar view fragment
+    workout_card.html  # Single workout detail fragment
+    chat_message.html  # Single chat message fragment
+```
+
+- All templates extend `base.html` via `{% extends "base.html" %}`
+- Partials are standalone HTML fragments — no `<html>` or `<body>` tags
+- Partials are returned by FastAPI routes in response to HTMX requests
+
+## HTMX Patterns
+- Use `hx-get` / `hx-post` to call FastAPI routes
+- Use `hx-target` to specify which element to update
+- Use `hx-swap` to control how content is replaced (default: `innerHTML`)
+- Use `hx-trigger` to control when requests fire (default: user action)
+
+```html
+<!-- Good: clicking a workout fetches its detail and swaps into #workout-detail -->
+<div class="workout-item"
+     hx-get="/workouts/{{ workout.id }}"
+     hx-target="#workout-detail"
+     hx-swap="innerHTML">
+  {{ workout.name }}
+</div>
+
+<!-- Good: chat form submits without page reload, appends response to #chat-messages -->
+<form hx-post="/chat"
+      hx-target="#chat-messages"
+      hx-swap="beforeend">
+  <input type="text" name="message" placeholder="Ask your coach...">
+  <button type="submit">Send</button>
+</form>
+```
+
+## UI Layout
+The main page is divided into two panels:
+- **Left panel (~2/3 width):** calendar view showing completed and upcoming workouts
+- **Right panel (~1/3 width):** chat interface for agent interaction
+
+```html
+<!-- Rough layout structure -->
+<div class="app-layout">
+  <div class="calendar-panel">
+    <!-- Calendar + workout details -->
+  </div>
+  <div class="chat-panel">
+    <!-- Chat messages + input -->
+  </div>
+</div>
+```
+
+## CSS Conventions
+- All styles live in `app/static/css/main.css`
+- Use CSS custom properties (variables) for colors, spacing, and typography
+- Mobile-friendly is nice but not the primary concern — this is a desktop app
+- Keep styles simple and readable; avoid clever CSS tricks
+
+```css
+/* Define variables at the root for easy theming */
+:root {
+  --color-primary: #e05c1a;   /* cycling orange */
+  --color-bg: #f9f9f9;
+  --color-text: #1a1a1a;
+  --color-border: #ddd;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 32px;
+}
+```
+
+## Jinja2 Conventions
+- Pass only what the template needs — don't pass entire model objects if a few fields suffice
+- Use `{{ variable }}` for output, `{% %}` for logic
+- Keep logic in templates minimal — if you need complex logic, do it in the route handler
+- Use `{% for %}` loops and `{% if %}` blocks sparingly; heavy logic belongs in Python
+
+## HTMX Script
+Load HTMX from CDN in `base.html`. No need to install it via npm.
+
+```html
+<script src="https://unpkg.com/htmx.org@2.0.0" integrity="..." crossorigin="anonymous"></script>
+```
+
+Always pin to a specific HTMX version — do not use `@latest`.

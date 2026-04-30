@@ -1,0 +1,156 @@
+---
+description: Services and agent layer conventions for Soigneur
+alwaysApply: true
+---
+
+# Services & Agent Layer Conventions
+
+## Overview
+The services layer is the bridge between external APIs and the rest of the app.
+It handles all HTTP calls, parses raw API responses into typed Pydantic models,
+and isolates external dependencies so they can be mocked in tests.
+
+The agent layer sits on top of services. It defines the PydanticAI agent, its
+tools, and the logic for constructing prompts. The agent never makes HTTP calls
+directly — it always goes through a service function.
+
+```
+FastAPI Route → Agent → Service → External API
+```
+
+## Services Layer
+
+### Location
+`app/services/`
+
+### Files
+- `intervals_service.py` — all interactions with the intervals.icu REST API
+- `trainerroad_service.py` — fetching and parsing the TrainerRoad iCal feed
+
+### Rules
+- Every service function is `async`
+- Every service function returns a typed Pydantic model or a list of them — never raw dicts
+- All HTTP calls use `httpx.AsyncClient`
+- Authentication (API keys, headers) is handled inside the service — callers don't deal with auth
+- Raise `RuntimeError` with a descriptive message on API errors (4xx, 5xx)
+- Log errors with enough context to debug (athlete ID, endpoint, status code)
+
+```python
+# Good — returns a typed model, handles auth internally, raises on error
+async def get_recent_workouts(
+    athlete_id: str,
+    days: int = 14,
+) -> list[Workout]:
+    """Fetch the most recent workouts for an athlete from intervals.icu.
+
+    Retrieves completed workout data including power, duration, TSS, and
+    any notes the athlete has left. Results are sorted newest-first.
+
+    Args:
+        athlete_id: The intervals.icu athlete ID from INTERVALS_ATHLETE_ID env var.
+        days: How many days back to fetch workouts. Defaults to 14.
+
+    Returns:
+        List of Workout models sorted by date descending. Empty list if no
+        workouts found in the given window.
+
+    Raises:
+        RuntimeError: If the intervals.icu API returns a non-200 response.
+    """
+    ...
+
+# Bad — returns raw dict, caller has to know API response shape
+async def get_recent_workouts(athlete_id: str) -> dict:
+    ...
+```
+
+### intervals.icu Service
+Key functions to implement:
+- `get_recent_workouts(athlete_id, days)` — completed workouts with metrics
+- `get_workout_detail(athlete_id, workout_id)` — single workout with full notes
+- `get_wellness(athlete_id, days)` — sleep, HRV, readiness metrics
+
+Authentication: HTTP Basic auth — username is `API_KEY`, password is the API key value.
+
+### TrainerRoad Service
+Key functions to implement:
+- `get_upcoming_workouts(ical_url, days)` — parse iCal feed, return upcoming workouts
+
+The iCal feed is a calendar subscription URL. Use the `icalendar` library to parse it.
+Each event contains a workout name and description — extract both.
+
+## Agent Layer
+
+### Location
+`app/agents/`
+
+### Files
+- `coach_agent.py` — PydanticAI agent definition, tools, and system prompt
+- `models.py` — Pydantic models shared between agent and services (Workout, Wellness, etc.)
+
+### Rules
+- The agent has one job: reason about cycling training data and respond to the user
+- Tools are thin wrappers around service functions — they handle calling the service
+  and formatting the result for the agent's context
+- The system prompt lives in `coach_agent.py` as a module-level constant — not hardcoded
+  inside a function
+- Keep the system prompt focused: who the agent is, what data it has access to,
+  how it should reason about training load and readiness
+
+```python
+# Good — tool is a thin wrapper, service does the real work
+@agent.tool
+async def fetch_recent_workouts(ctx: RunContext[AgentDeps], days: int = 14) -> str:
+    """Fetch the athlete's recent completed workouts.
+
+    Retrieves workouts from intervals.icu for the past `days` days and
+    returns them as a formatted string for the agent to reason about.
+
+    Args:
+        ctx: PydanticAI run context containing athlete_id and other deps.
+        days: Number of days of history to fetch. Defaults to 14.
+
+    Returns:
+        Human-readable summary of recent workouts for agent consumption.
+    """
+    workouts = await get_recent_workouts(
+        athlete_id=ctx.deps.athlete_id,
+        days=days,
+    )
+    # Format workouts as readable text — the agent reasons over text, not objects
+    return format_workouts_for_agent(workouts)
+```
+
+### Agent Dependencies
+Use PydanticAI's dependency injection for values the agent needs at runtime.
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class AgentDeps:
+    """Runtime dependencies injected into the agent on each request.
+
+    These are values that vary per request or per user, so they can't
+    be hardcoded into the agent definition.
+    """
+    athlete_id: str
+```
+
+### System Prompt
+The system prompt should tell the agent:
+- It is a cycling coach assistant
+- What data sources it has access to (via tools)
+- How to interpret training load, TSS, HRV, and readiness
+- To be direct and specific — not generic fitness advice
+
+## Shared Models
+Define all shared Pydantic models in `app/agents/models.py`.
+Both the services and agent layers import from here.
+Do not define models inside service files.
+
+```
+app/agents/models.py   ← single source of truth for data models
+app/services/          ← imports models from agents/models.py
+app/agents/            ← imports models from agents/models.py
+```
