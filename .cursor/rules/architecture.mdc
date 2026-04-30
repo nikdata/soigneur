@@ -46,7 +46,7 @@ Browser
 ## Page Load Flow (Deterministic)
 On every page load, FastAPI fetches and renders:
 
-1. **Calendar data** — past 30 days of completed workouts + upcoming workouts from TrainerRoad iCal
+1. **Calendar data** — past 30 days of completed workouts + upcoming workouts from TrainerRoad iCal (up to 8 days from the current date)
 2. **Today's readiness** — HRV, readiness score from intervals.icu wellness endpoint
 3. **Sleep data** — sleep score, total sleep time from Oura via intervals.icu
 4. **Weather** — current conditions and today's forecast from Open-Meteo, using user's location

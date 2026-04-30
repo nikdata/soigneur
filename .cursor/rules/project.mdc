@@ -41,6 +41,7 @@ needs — nutrition, recovery, logistics. This app does the same, but for traini
 - `INTERVALS_API_KEY`
 - `INTERVALS_ATHLETE_ID`
 - `TRAINERROAD_ICAL_URL`
+- `LOCATION_ZIP`
 
 ## Project Structure
 ```
