@@ -21,6 +21,7 @@ needs — nutrition, recovery, logistics. This app does the same, but for traini
 - **Backend:** FastAPI (async), PydanticAI, Anthropic Claude
 - **Frontend:** Jinja2 templates + HTMX (no JavaScript frameworks)
 - **Package manager:** uv
+- **Secrets management:** Doppler
 - **Deployment:** Railway
 - **Linter/formatter:** Ruff
 
@@ -34,14 +35,20 @@ needs — nutrition, recovery, logistics. This app does the same, but for traini
 - Agent calls services — never makes raw HTTP calls directly
 - Data fetching is deterministic; LLM is only involved in reasoning and chat responses
 - Route handlers are thin — business logic lives in services or agents
-- Never hardcode secrets; all config via environment variables
+- Never hardcode secrets; all config via environment variables via Doppler
 
 ## Environment Variables
+Secrets are managed via Doppler — do not use a `.env` file.
 - `ANTHROPIC_API_KEY`
 - `INTERVALS_API_KEY`
 - `INTERVALS_ATHLETE_ID`
 - `TRAINERROAD_ICAL_URL`
 - `LOCATION_ZIP`
+
+## Local Development
+```bash
+doppler run -- uv run uvicorn app.main:app --reload
+```
 
 ## Project Structure
 ```
@@ -62,5 +69,5 @@ pyproject.toml
 - Use React, Vue, or any JavaScript framework
 - Add LangChain or LlamaIndex
 - Write synchronous I/O in async contexts
-- Commit `.env` files
+- Commit `.env` files or secrets — use Doppler for secret management
 - Put business logic in route handlers

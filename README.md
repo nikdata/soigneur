@@ -33,6 +33,7 @@ Soigneur analyzes your completed workouts, upcoming scheduled training, sleep, a
 - **Frontend:** Jinja2 templates, HTMX — no JavaScript frameworks
 - **Database:** DuckDB (chat history, check-ins, goals, auth)
 - **Package manager:** uv
+- **Secrets management:** Doppler
 - **Linter/formatter:** Ruff
 - **Deployment:** Railway
 
@@ -43,6 +44,7 @@ Soigneur analyzes your completed workouts, upcoming scheduled training, sleep, a
 ### Prerequisites
 - Python 3.14+
 - [uv](https://docs.astral.sh/uv/)
+- [Doppler CLI](https://docs.doppler.com/docs/install-cli)
 
 ### Setup
 
@@ -53,23 +55,27 @@ cd soigneur
 # Install dependencies
 uv sync
 
-# Copy and fill in environment variables
-cp .env.example .env
+# Authenticate with Doppler (one-time)
+doppler login
+doppler setup
 ```
 
 ### Environment Variables
 
+Secrets are managed via Doppler. The following variables must be configured in your Doppler project:
+
 ```
-ANTHROPIC_API_KEY=
-INTERVALS_API_KEY=
-INTERVALS_ATHLETE_ID=
-TRAINERROAD_ICAL_URL=
+ANTHROPIC_API_KEY
+INTERVALS_API_KEY
+INTERVALS_ATHLETE_ID
+TRAINERROAD_ICAL_URL
+LOCATION_ZIP
 ```
 
 ### Run
 
 ```bash
-uv run uvicorn app.main:app --reload
+doppler run -- uv run uvicorn app.main:app --reload
 ```
 
 Open [http://localhost:8000](http://localhost:8000).
@@ -91,7 +97,7 @@ tests/
   integration/
   conftest.py
 .cursor/rules/         # Cursor AI project rules
-.env.example
+.env.example           # Documents required env vars — no values
 pyproject.toml
 ```
 
