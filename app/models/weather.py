@@ -4,6 +4,7 @@ Pydantic models for weather forecast data.
 
 from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
+from datetime import datetime as dt, date as d
 
 WMO_CODES: dict[int, str] = {
     0: "Clear sky",
@@ -40,7 +41,7 @@ class CurrentWeather(BaseModel):
     """
     A current weather reading for a given latitude and longitude.
     """
-    datetime: datetime = Field(..., description="The date and time of the reading")
+    datetime: dt = Field(..., description="The date and time of the reading")
     temperature: float = Field(..., description="The temperature in Fahrenheit")
     relative_humidity: float = Field(..., description="The relative humidity in percent")
     weather_code: int = Field(..., description="The weather code from the WMO code set")
@@ -63,7 +64,7 @@ class DailyWeather(BaseModel):
     """
     A daily weather forecast for a given latitude and longitude.
     """
-    date: date = Field(..., description="The date of the forecast")
+    date: d = Field(..., description="The date of the forecast")
     weather_code: int = Field(..., description="The weather code from the WMO code set")
     temperature_max: float = Field(..., description="The maximum temperature in Fahrenheit")
     temperature_min: float = Field(..., description="The minimum temperature in Fahrenheit")
@@ -87,7 +88,7 @@ class HourlyWeather(BaseModel):
     """
     A hourly weather reading for a given latitude and longitude.
     """
-    datetime: datetime = Field(..., description="The date and time of the reading")
+    datetime: dt = Field(..., description="The date and time of the reading")
     temperature: float = Field(..., description="The temperature in Fahrenheit")
     relative_humidity: float = Field(..., description="The relative humidity in percent")
     precipitation_probability: int = Field(..., description="The precipitation probability in percent")
