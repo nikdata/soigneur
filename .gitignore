@@ -3,3 +3,6 @@
 
 # Environment variables
 .env
+
+# caches
+__pycache__/
