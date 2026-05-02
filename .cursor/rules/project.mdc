@@ -1,5 +1,5 @@
 ---
-description: Soigneur project overview, architecture, and stack decisions
+description: Soigneur project overview and stack decisions
 alwaysApply: true
 ---
 
@@ -13,57 +13,23 @@ coaching insights through a conversational chat interface.
 The name comes from cycling: a soigneur is the person who takes care of the rider's
 needs — nutrition, recovery, logistics. This app does the same, but for training decisions.
 
-## Data Sources
-- **intervals.icu API** — completed workouts, sleep, HRV, readiness metrics, workout notes
-- **TrainerRoad iCal feed** — upcoming scheduled workouts (calendar subscription URL)
-
 ## Stack
 - **Backend:** FastAPI (async), PydanticAI, Anthropic Claude
 - **Frontend:** Jinja2 templates + HTMX (no JavaScript frameworks)
+- **Database:** DuckDB (chat history, check-ins, goals, auth)
+- **Auth:** Simple username/password login with JWT sessions (single user)
 - **Package manager:** uv
 - **Secrets management:** Doppler
 - **Deployment:** Railway
 - **Linter/formatter:** Ruff
 
-## UI Layout
-- Left ~2/3: calendar view showing completed and upcoming workouts
-- Right ~1/3: chat interface for interacting with the coaching agent
-- HTMX handles dynamic updates without full page reloads
-
 ## Architecture Principles
-- Services layer handles all external API calls (intervals.icu, TrainerRoad iCal)
+- Services layer handles all external API calls (intervals.icu, TrainerRoad iCal, Open-Meteo)
 - Agent calls services — never makes raw HTTP calls directly
 - Data fetching is deterministic; LLM is only involved in reasoning and chat responses
 - Route handlers are thin — business logic lives in services or agents
 - Never hardcode secrets; all config via environment variables via Doppler
-
-## Environment Variables
-Secrets are managed via Doppler — do not use a `.env` file.
-- `ANTHROPIC_API_KEY`
-- `INTERVALS_API_KEY`
-- `INTERVALS_ATHLETE_ID`
-- `TRAINERROAD_ICAL_URL`
-- `LOCATION_ZIP`
-
-## Local Development
-```bash
-doppler run -- uv run uvicorn app.main:app --reload
-```
-
-## Project Structure
-```
-app/
-  main.py              # FastAPI entry point
-  routers/             # Route handlers
-  services/            # External data fetching (intervals, trainerroad)
-  agents/              # PydanticAI agent and tools
-  templates/           # Jinja2 HTML templates
-  static/              # CSS and static assets
-tests/
-.env.example
-.cursor/rules/
-pyproject.toml
-```
+- All I/O is async
 
 ## Do Not
 - Use React, Vue, or any JavaScript framework

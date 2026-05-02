@@ -9,120 +9,30 @@ alwaysApply: true
 Python 3.14
 
 ## Formatter & Linter
-- Use **Ruff** for both formatting and linting
-- Line length: 88 characters
-- Run `ruff check` and `ruff format` before committing
+Ruff for both formatting and linting. Line length: 88. Run `ruff check` and `ruff format` before committing.
 
 ## Type Hints
 - Required on every function signature — parameters and return types
-- Use `from __future__ import annotations` at the top of every file for forward references
+- Use `from __future__ import annotations` at the top of every file
 - Prefer `X | None` over `Optional[X]`
-- Prefer `list[X]`, `dict[K, V]` over `List[X]`, `Dict[K, V]` (Python 3.10+ style)
-
-```python
-# Good
-def get_workout(workout_id: str) -> Workout | None:
-    ...
-
-# Bad
-def get_workout(workout_id):
-    ...
-```
+- Prefer `list[X]`, `dict[K, V]` over `List[X]`, `Dict[K, V]`
 
 ## Async
 - All I/O-bound functions must be `async`
 - Use `httpx.AsyncClient` for HTTP calls — never `requests`
 - Never call blocking I/O inside an async function
 
-```python
-# Good
-async def fetch_workouts(athlete_id: str) -> list[Workout]:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(...)
-
-# Bad
-def fetch_workouts(athlete_id: str) -> list[Workout]:
-    response = requests.get(...)
-```
-
-## Pydantic Models
-- Use Pydantic v2 for all data models
-- Every external API response should be parsed into a Pydantic model immediately
-- Use `model_config = ConfigDict(...)` for model configuration — not the inner `class Config`
-- Use `Field(...)` for field descriptions, defaults, and validation
-
-```python
-from pydantic import BaseModel, Field, ConfigDict
-
-class Workout(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    id: str
-    name: str
-    duration_seconds: int = Field(..., description="Total workout duration in seconds")
-    average_watts: float | None = Field(None, description="Average power output; None for non-power rides")
-```
+## Pydantic
+- Pydantic v2 for all data models
+- Parse external API responses into Pydantic models immediately
+- Use `model_config = ConfigDict(...)` — not inner `class Config`
 
 ## Docstrings
 - Required on every module, class, and function — no exceptions
-- Use Google-style docstrings
+- Google-style format
 - Be detailed: explain what the function does, why it exists, and any non-obvious behavior
 - Document all parameters, return values, and exceptions
-
-```python
-def calculate_tss(
-    duration_seconds: int,
-    normalized_power: float,
-    ftp: float,
-) -> float:
-    """Calculate Training Stress Score (TSS) for a workout.
-
-    TSS quantifies the training load of a workout based on intensity and
-    duration relative to the rider's Functional Threshold Power (FTP).
-    A TSS of 100 represents one hour at exactly FTP effort.
-
-    Args:
-        duration_seconds: Total workout duration in seconds.
-        normalized_power: The normalized power output in watts.
-        ftp: The rider's current Functional Threshold Power in watts.
-
-    Returns:
-        TSS as a float. Higher values indicate greater training load.
-
-    Raises:
-        ValueError: If ftp is zero or negative, which would cause division by zero.
-    """
-    if ftp <= 0:
-        raise ValueError(f"FTP must be positive, got {ftp}")
-
-    intensity_factor = normalized_power / ftp
-    tss = (duration_seconds * normalized_power * intensity_factor) / (ftp * 3600) * 100
-    return tss
-```
-
-## Inline Comments
-- Explain *why*, not *what* — the code shows what, comments explain intent
-- Use comments for non-obvious decisions, edge cases, and external API quirks
-
-```python
-# Good — explains a non-obvious behavior of the external API
-# intervals.icu returns watts as None for non-power rides (e.g. running, swimming)
-power = workout.get("watts") or 0
-
-# Bad — states the obvious
-# Add 1 to the counter
-count += 1
-```
-
-## Error Handling
-- Use specific exception types, not bare `except:`
-- Always log errors with enough context to debug
-- Raise `ValueError` for bad inputs, `RuntimeError` for unexpected state
-
-## Imports
-- Group imports: standard library → third-party → local, separated by blank lines
-- No wildcard imports (`from module import *`)
+- Write for a reader with basic Python knowledge — clarity over brevity
 
 ## Environment Variables
-- Load with `python-dotenv` in a central `config.py`
-- Never access `os.environ` directly outside of `config.py`
+All config via Doppler. Access env vars through a central `config.py` — never `os.environ` directly outside of `config.py`.

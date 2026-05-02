@@ -7,139 +7,42 @@ alwaysApply: true
 
 ## Stack
 - **pytest** — test runner
-- **pytest-asyncio** — async test support
-- **httpx** — async HTTP client; also used for FastAPI test client
-- **pytest-mock** — mocking external services (intervals.icu, TrainerRoad, Anthropic)
+- **pytest-asyncio** — async test support (`asyncio_mode = "auto"` in pyproject.toml)
+- **httpx** — async HTTP client; also used for FastAPI test client via `ASGITransport`
+- **pytest-mock** — mocking external services
 
 ## Running Tests
 ```bash
-uv run pytest                  # run all tests
-uv run pytest tests/unit/      # run only unit tests
-uv run pytest tests/integration/  # run only integration tests
-uv run pytest -v               # verbose output
-uv run pytest -x               # stop on first failure
+uv run pytest                     # all tests
+uv run pytest tests/unit/         # unit only
+uv run pytest tests/integration/  # integration only
+uv run pytest -x                  # stop on first failure
 ```
 
 ## Directory Structure
 ```
 tests/
-  conftest.py          # Shared fixtures (app client, mock data, etc.)
-  unit/                # Tests for individual functions and classes
-    services/          # Tests for intervals_service, trainerroad_service
-    agents/            # Tests for agent tools
-  integration/         # Tests for FastAPI routes end-to-end
+  conftest.py            # Shared fixtures
+  unit/
+    services/            # intervals_service, trainerroad_service, etc.
+    agents/              # Agent tools
+  integration/           # FastAPI routes end-to-end
 ```
 
-## Async Tests
-Use `@pytest.mark.asyncio` for any test that calls an async function.
-Configure `pytest-asyncio` in `asyncio_mode = "auto"` in `pyproject.toml` so you
-don't have to decorate every single async test manually.
-
-```toml
-# pyproject.toml
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-```
-
-```python
-# With asyncio_mode = "auto", async tests just work — no decorator needed
-async def test_fetch_workouts_returns_list(mock_intervals_client):
-    """Test that fetch_workouts returns a list of Workout models.
-
-    Verifies the service correctly parses the intervals.icu API response
-    into typed Workout objects.
-    """
-    workouts = await fetch_workouts(athlete_id="test_athlete")
-    assert isinstance(workouts, list)
-    assert all(isinstance(w, Workout) for w in workouts)
-```
-
-## Mocking External Services
-Never make real HTTP calls in tests. Mock the HTTP layer using `pytest-mock` or
-`unittest.mock`. This keeps tests fast and avoids dependency on external APIs.
-
-```python
-import pytest
-from unittest.mock import AsyncMock, patch
-
-async def test_fetch_workouts_handles_api_error(mock_intervals_response):
-    """Test that fetch_workouts raises a RuntimeError when the API returns a 500.
-
-    intervals.icu occasionally returns 5xx errors. The service layer should
-    catch these and raise a descriptive RuntimeError rather than letting
-    raw HTTP exceptions bubble up to the agent.
-    """
-    with patch("app.services.intervals_service.httpx.AsyncClient") as mock_client:
-        # Simulate a 500 response from intervals.icu
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-            return_value=AsyncMock(status_code=500)
-        )
-        with pytest.raises(RuntimeError, match="intervals.icu API error"):
-            await fetch_workouts(athlete_id="test_athlete")
-```
-
-## Fixtures
-Define shared fixtures in `tests/conftest.py`. Keep fixtures focused —
-one fixture per concern.
-
-```python
-# tests/conftest.py
-import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app
-
-@pytest.fixture
-async def client():
-    """Async HTTP client for testing FastAPI routes.
-
-    Uses ASGI transport so requests go directly to the app
-    without needing a running server.
-    """
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
-
-@pytest.fixture
-def sample_workout() -> dict:
-    """Returns a sample intervals.icu workout API response.
-
-    Use this fixture wherever a raw API response is needed as input,
-    rather than hardcoding the same dict in multiple tests.
-    """
-    return {
-        "id": "abc123",
-        "name": "Sweet Spot Base",
-        "moving_time": 3600,
-        "watts": 220,
-        "type": "Ride",
-    }
-```
-
-## Test Naming & Docstrings
-- Test function names: `test_<what>_<condition>_<expected outcome>`
+## Rules
+- Never make real HTTP calls in tests — mock the HTTP layer
+- Async tests just work with `asyncio_mode = "auto"` — no decorator needed
+- Test naming: `test_<what>_<condition>_<expected_outcome>`
 - Every test function must have a docstring explaining what it verifies and why
-
-```python
-# Good
-async def test_calculate_tss_returns_100_at_ftp_for_one_hour():
-    """Test that TSS equals 100 when riding at exactly FTP for one hour.
-
-    TSS = 100 is the definition of one hour at FTP, so this is the
-    canonical sanity check for the TSS calculation.
-    """
-    assert calculate_tss(duration_seconds=3600, normalized_power=250, ftp=250) == 100.0
-
-# Bad
-async def test_tss():
-    assert calculate_tss(3600, 250, 250) == 100.0
-```
+- Define shared fixtures in `tests/conftest.py` — one fixture per concern
 
 ## What to Test
 - **Services:** API response parsing, error handling, edge cases (None values, empty responses)
-- **Agent tools:** correct data is passed to services, correct output shape returned
-- **Routes:** correct HTTP status codes, correct template context, HTMX partial responses
-- **Models:** Pydantic validation — required fields, field constraints, default values
+- **Agent tools:** correct data passed to services, correct output shape
+- **Routes:** HTTP status codes, correct template context, HTMX partial responses
+- **Models:** Pydantic validation — required fields, constraints, defaults
 
 ## What Not to Test
-- The Anthropic API itself — mock it; you're not testing Claude
+- The Anthropic API itself — mock it
 - intervals.icu or TrainerRoad APIs directly — mock them
 - Jinja2 rendering internals — test that the route returns 200 and the right context

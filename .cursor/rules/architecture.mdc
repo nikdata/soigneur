@@ -6,7 +6,7 @@ alwaysApply: true
 # Soigneur – Architecture
 
 ## System Overview
-Soigneur is a personal cycling coach dashboard with two distinct interaction modes:
+Soigneur has two distinct interaction modes:
 1. **Dashboard (deterministic):** Page load fetches and renders data without LLM involvement
 2. **Chat (agent-driven):** User questions trigger the PydanticAI agent, which decides what data to fetch
 
@@ -43,38 +43,23 @@ Browser
                                                               (HTMX partial response)
 ```
 
-## Page Load Flow (Deterministic)
-On every page load, FastAPI fetches and renders:
+## Page Load Flow
+On every page load, FastAPI fetches in parallel via `asyncio.gather`:
+- Past 30 days of completed workouts + upcoming workouts from TrainerRoad iCal (up to 8 days out)
+- Today's readiness (HRV, readiness score) from intervals.icu
+- Sleep data (sleep score, total sleep time) from Oura via intervals.icu
+- Weather from Open-Meteo using user's location
+- User's configured goals/events
 
-1. **Calendar data** — past 30 days of completed workouts + upcoming workouts from TrainerRoad iCal (up to 8 days from the current date)
-2. **Today's readiness** — HRV, readiness score from intervals.icu wellness endpoint
-3. **Sleep data** — sleep score, total sleep time from Oura via intervals.icu
-4. **Weather** — current conditions and today's forecast from Open-Meteo, using user's location
-5. **Daily check-in widget** — mood + stress dropdowns, free-text field (user fills this in)
-6. **Goals** — user's configured training goals/events
-
-All of this is fetched in parallel using `asyncio.gather` for performance.
 No LLM is involved in page load.
 
-## Chat Flow (Agent-Driven)
-When the user sends a message:
-
-1. HTMX POSTs the message to `POST /chat`
-2. FastAPI appends the message to DuckDB conversation history
-3. The agent receives the message + full conversation history as context
-4. The agent decides which tools to call based on the question
-5. Tools call the appropriate service functions
-6. The agent synthesizes a response
-7. FastAPI saves the response to DuckDB and returns an HTMX partial (chat message fragment)
-8. HTMX appends the response to the chat panel — no page reload
-
-## Daily Check-In
-A lightweight widget on the dashboard for the current day only:
-- **Mood:** dropdown or slider (e.g., 1–5 scale)
-- **Stress level:** dropdown or slider (e.g., 1–5 scale)
-- **Free text:** optional "anything else" field
-- Submitted via HTMX POST to `/checkin`
-- Stored in DuckDB, available to the agent as context for the day
+## Chat Flow
+1. HTMX POSTs message to `POST /chat`
+2. Message appended to DuckDB conversation history
+3. Agent receives message + full conversation history
+4. Agent decides which tools to call, tools call service functions
+5. Agent synthesizes response, saved to DuckDB
+6. HTMX partial returned and appended to chat panel — no page reload
 
 ## Agent Reasoning Modes
 The agent should recognize and handle these key scenarios:
@@ -85,80 +70,30 @@ The agent should recognize and handle these key scenarios:
 
 2. **Workout substitution** — "What should I do instead?"
    - Proposes a free-form workout description (not a specific TrainerRoad workout)
-   - User can find a similar TR workout and paste details into chat for evaluation
 
 3. **Workout analysis** — "How did this compare to similar workouts?"
    - Compares against prior workouts in the current season
-   - References workout notes from intervals.icu
 
 4. **Mental reset recommendation** — triggered by combination of:
-   - High stress or low mood from check-in
-   - Good weather (not too cold, not rainy, wind within acceptable range)
-   - Accumulated training load
-   - Output: "Just go ride outside, no structure, enjoy it" is a valid coaching output
+   - High stress or low mood + good weather + accumulated training load
+   - "Just go ride outside, no structure, enjoy it" is a valid coaching output
 
 5. **Goal-aware recommendations** — agent knows upcoming events and their type/priority
    - Distinguishes between race, sportive, charity ride, fitness block, no-event
    - "Complete comfortably" vs "podium" changes the recommendation entirely
 
-## Weather Integration
-- Provider: Open-Meteo (free, no API key required)
-- Location: user-entered field on the dashboard (zip code or city/state) — not hardcoded
-- Used by: agent tool only (not rendered on dashboard directly, though current conditions
-  can be shown as ambient info)
-- Relevant signals for outdoor ride recommendation:
-  - Temperature (not too cold)
-  - Precipitation (no rain)
-  - Wind speed + gusts (within acceptable range)
-
-## Goals Configuration
-- User enters goals via a form on the dashboard or uploads a YAML file
-- Fields: event name, date, type (race / sportive / charity / fitness / none),
-  priority (A/B/C), target outcome (e.g., "complete comfortably")
-- Stored in DuckDB
-- Available to agent as context on every chat request
-- Events appear on the calendar
-
-## Conversation Persistence
-- Backend: DuckDB
-- Schema: session_id, timestamp, date, role (user/assistant), message
-- Full conversation history is passed to the agent on each request
-- Enables queries like "what did you recommend last Tuesday and why"
-- History is scoped to the logged-in user
-
-## Authentication
-- Simple username/password login
-- JWT tokens for session management
-- Stored in DuckDB (hashed passwords)
-- Sufficient to prevent unauthorized access — not enterprise-grade security
-- Single user initially (personal tool)
-
 ## Data Persistence (DuckDB)
-All persistent state lives in a single DuckDB file:
 ```
-data/
-  soigneur.duckdb
-    tables:
-      conversations     — chat history (session_id, timestamp, role, message)
-      daily_checkins    — mood, stress, free text, keyed by date
-      goals             — training goals and events
-      users             — login credentials (hashed)
-```
-
-## Services
-```
-app/services/
-  intervals_service.py    — intervals.icu REST API (workouts, wellness, notes)
-  trainerroad_service.py  — TrainerRoad iCal feed parsing
-  weather_service.py      — Open-Meteo API
-  goals_service.py        — read/write goals from DuckDB
-  auth_service.py         — login, JWT creation/validation
-  checkin_service.py      — read/write daily check-ins from DuckDB
+data/soigneur.duckdb
+  tables:
+    conversations     — session_id, timestamp, date, role, message
+    daily_checkins    — mood, stress, free text, keyed by date
+    goals             — event name, date, type, priority, target outcome
+    users             — login credentials (hashed)
 ```
 
 ## Key Constraints
 - Structured workouts are always indoors — agent never suggests a structured workout outdoors
-- Outdoor rides are always unstructured — agent recommends these for mental reset or recovery
+- Outdoor rides are always unstructured — for mental reset or recovery only
 - Season-scoped analysis by default — prior seasons are a future feature
 - No JavaScript frameworks — HTMX only
-- All I/O is async
