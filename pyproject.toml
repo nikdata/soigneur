@@ -3,7 +3,7 @@ name = "soigneur"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.97.0",
     "duckdb>=1.5.2",

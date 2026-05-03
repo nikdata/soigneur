@@ -154,4 +154,7 @@ async def main():
         print(f"  {hour.datetime}: {hour.description}, {hour.temperature}°F, wind {hour.wind_speed} mph")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"Error: {e}")
