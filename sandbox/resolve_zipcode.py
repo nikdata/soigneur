@@ -5,7 +5,6 @@ The zip code is part of the environment variable LOCATION_ZIP and is "injected" 
 
 """
 
-
 from __future__ import annotations
 import asyncio
 import json
@@ -20,7 +19,7 @@ async def resolve_zipcode() -> tuple[float, float]:
     Returns:
         tuple[float, float]: The latitude and longitude of the zipcode.
     """
-    
+
     # instantiate the settings
     settings = get_settings()
     postal_code = settings.location_zip
@@ -31,16 +30,12 @@ async def resolve_zipcode() -> tuple[float, float]:
 
     # base_url = f"https://nominatim.openstreetmap.org/search?postalcode={postal_code}&country=United+States&format=json"
     base_url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "postalcode": postal_code,
-        "country": "United States",
-        "format": "json"
-    }
+    params = {"postalcode": postal_code, "country": "United States", "format": "json"}
 
     # async client to make the request
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            response = await client.get(base_url, params = params)
+            response = await client.get(base_url, params=params)
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -53,10 +48,10 @@ async def resolve_zipcode() -> tuple[float, float]:
     # check to ensure that data is not empty
     if not data:
         raise ValueError(f"No data found for postal code: {postal_code}")
-    
+
     # check to ensure that the data is in the expected format
     payload = data[0]
-    
+
     if "lat" not in payload or "lon" not in payload:
         raise ValueError(f"Unexpected response format for postal code: {postal_code}")
 
@@ -66,6 +61,7 @@ async def resolve_zipcode() -> tuple[float, float]:
 
     gps = (lat, lon)
     return gps
+
 
 if __name__ == "__main__":
     coord = asyncio.run(resolve_zipcode())

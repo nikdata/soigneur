@@ -3,8 +3,14 @@ import asyncio
 import json
 import httpx
 from app.services.weather_service import resolve_zipcode
-from app.models.weather import WeatherForecast, CurrentWeather, DailyWeather, HourlyWeather
+from app.models.weather import (
+    WeatherForecast,
+    CurrentWeather,
+    DailyWeather,
+    HourlyWeather,
+)
 from datetime import datetime, date
+
 
 def parse_weather_forecast(payload: dict) -> WeatherForecast:
     """
@@ -34,20 +40,20 @@ def parse_weather_forecast(payload: dict) -> WeatherForecast:
     daily_times = d["time"]
     n_daily = len(daily_times)
     expected_keys_daily = (
-        'weather_code',
-        'temperature_2m_max',
-        'temperature_2m_min',
-        'wind_speed_10m_max',
-        'wind_gusts_10m_max',
-        'wind_direction_10m_dominant',
-        'precipitation_sum',
-        'precipitation_probability_max')
+        "weather_code",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "wind_speed_10m_max",
+        "wind_gusts_10m_max",
+        "wind_direction_10m_dominant",
+        "precipitation_sum",
+        "precipitation_probability_max",
+    )
     daily_list: list[DailyWeather] = []
     for key in expected_keys_daily:
         if len(d[key]) != n_daily:
             raise ValueError(
-                f"Daily length mismatch for {key}: "
-                f"{len(d[key])} != {n_daily}"
+                f"Daily length mismatch for {key}: {len(d[key])} != {n_daily}"
             )
     for i in range(n_daily):
         daily_list.append(
@@ -60,7 +66,9 @@ def parse_weather_forecast(payload: dict) -> WeatherForecast:
                 wind_gusts_max=float(d["wind_gusts_10m_max"][i]),
                 wind_direction_dominant=int(d["wind_direction_10m_dominant"][i]),
                 precipitation_sum=float(d["precipitation_sum"][i]),
-                precipitation_probability_max=int(d["precipitation_probability_max"][i]),
+                precipitation_probability_max=int(
+                    d["precipitation_probability_max"][i]
+                ),
             )
         )
     # parse the hourly forecast
@@ -80,8 +88,7 @@ def parse_weather_forecast(payload: dict) -> WeatherForecast:
     for key in expected_keys:
         if len(h[key]) != n_hourly:
             raise ValueError(
-                f"Hourly length mismatch for {key}: "
-                f"{len(h[key])} != {n_hourly}"
+                f"Hourly length mismatch for {key}: {len(h[key])} != {n_hourly}"
             )
     hourly_list: list[HourlyWeather] = []
     for i in range(n_hourly):
@@ -116,20 +123,20 @@ async def fetch_weather_forecast(lat: float, lon: float) -> WeatherForecast:
     params = {
         "latitude": lat,
         "longitude": lon,
-        "current": 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,weather_code',
-        "daily": 'weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum,precipitation_probability_max',
-        "hourly": 'temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m',
-        "timezone": 'America/Chicago',
-        "temperature_unit": 'fahrenheit',
-        "wind_speed_unit": 'mph',
-        "precipitation_unit": 'inch',
-        "timeformat": 'iso8601',
-        "forecast_days": 4, # this includes the current day plus 3 days after the current day
+        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,weather_code",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum,precipitation_probability_max",
+        "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m",
+        "timezone": "America/Chicago",
+        "temperature_unit": "fahrenheit",
+        "wind_speed_unit": "mph",
+        "precipitation_unit": "inch",
+        "timeformat": "iso8601",
+        "forecast_days": 4,  # this includes the current day plus 3 days after the current day
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            response = await client.get(base_url, params = params)
+            response = await client.get(base_url, params=params)
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -138,7 +145,7 @@ async def fetch_weather_forecast(lat: float, lon: float) -> WeatherForecast:
             raise RuntimeError(f"OpenMeteo request failed: {e}") from e
         except json.JSONDecodeError as e:
             raise ValueError("Invalid JSON format from OpenMeteo API") from e
-    
+
     return parse_weather_forecast(data)
 
 
@@ -148,10 +155,15 @@ async def main():
     print("Current:", forecast.current)
     print("\nDaily:")
     for day in forecast.daily:
-        print(f"  {day.date}: {day.description}, {day.temperature_min}-{day.temperature_max}°F")
+        print(
+            f"  {day.date}: {day.description}, {day.temperature_min}-{day.temperature_max}°F"
+        )
     print("\nHourly (first 6):")
     for hour in forecast.hourly[:6]:
-        print(f"  {hour.datetime}: {hour.description}, {hour.temperature}°F, wind {hour.wind_speed} mph")
+        print(
+            f"  {hour.datetime}: {hour.description}, {hour.temperature}°F, wind {hour.wind_speed} mph"
+        )
+
 
 if __name__ == "__main__":
     try:
