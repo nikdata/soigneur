@@ -1,0 +1,20 @@
+# Race type:
+#   race = a race or sportive
+#   charity = a charity ride
+#   fitness = a fitness block
+#   sportive = a sportive ride
+#   none = no event
+
+# Priority scale:
+#   A = peak event, structure training around it
+#   B = want to perform well, but not the primary focus
+#   C = just participate and enjoy
+
+goals:
+- name: "Princess Margaret Cancer Foundation Charity Ride"
+  date: 2026-06-12
+  days: 2
+  type: "charity"
+  priority: "C"
+  description: "Charity ride for the Princess Margaret Cancer Foundation. 2 days in a row, ~100 km each day."
+  target_outcome: "Complete the ride without bonking"

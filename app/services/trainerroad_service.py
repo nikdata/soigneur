@@ -1,8 +1,17 @@
-"""Sandbox script to explore the TrainerRoad iCal feed."""
+"""
+TrainerRoad planned workout service.
+
+Fetches the TrainerRoad iCal calendar feed and parses VEVENT entries into
+PlannedWorkout models. The iCal DESCRIPTION field is parsed to extract
+TSS, IF, predicted calories, and the workout description (goals text is
+stripped). Rest days are excluded.
+
+The main entry point is ``get_planned_workouts()``, which returns workouts
+from today through a configurable number of days ahead.
+"""
 
 from __future__ import annotations
 
-import asyncio
 import re
 from datetime import date, datetime, timedelta
 from pydantic import ValidationError
@@ -147,7 +156,21 @@ def planned_workout_from_vevent(event: object) -> PlannedWorkout | None:
     )
 
 
-async def get_planned_workouts(days_ahead: int = 5) -> None:
+async def get_planned_workouts(days_ahead: int = 5) -> list[PlannedWorkout]:
+    """
+    Fetch upcoming planned workouts from the TrainerRoad iCal feed.
+
+    Retrieves the full calendar, filters to workouts from today through
+    ``days_ahead`` days out, and returns them sorted by date. Rest days
+    are excluded.
+
+    Args:
+        days_ahead: Number of days ahead to include. Defaults to 5.
+
+    Returns:
+        Planned workouts sorted by date, earliest first.
+    """
+
     settings = get_settings()
     url = settings.trainerroad_ical_url
 
@@ -186,8 +209,4 @@ async def get_planned_workouts(days_ahead: int = 5) -> None:
         if today <= workout.date <= end_inclusive:
             in_window.append(workout)
 
-    for workout in sorted(in_window, key=lambda w: w.date):
-        print(workout.model_dump())
-
-
-asyncio.run(get_planned_workouts())
+    return sorted(in_window, key=lambda w: w.date)
