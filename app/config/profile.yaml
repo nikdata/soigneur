@@ -1,0 +1,48 @@
+workouts:
+  max_workout_duration: 45
+  min_workout_duration: 15
+recurring_family_events:
+  - name: 'swimming'
+    duration: 30
+    day_of_week: "Monday"
+    event_start_time: "17:30"
+    event_end_time: "18:00"
+  - name: 'tutoring'
+    duration: 60
+    day_of_week: "Tuesday"
+    event_start_time: "15:15"
+    event_end_time: "16:15"
+  - name: 'art class'
+    duration: 75
+    day_of_week: "Wednesday"
+    event_start_time: "18:00"
+    event_end_time: "19:15"
+  - name: 'dance class'
+    duration: 60
+    day_of_week: "Thursday"
+    event_start_time: "18:00"
+    event_end_time: "19:00"
+  - name: 'personal training'
+    duration: 60
+    day_of_week: "Friday"
+    event_start_time: "11:15"
+    event_end_time: "12:15"
+typical_availability:
+  Monday:
+    - "12pm - 5pm"
+  Tuesday:
+    - "2pm - 4pm"
+    - "5pm - 6:30pm"
+  Wednesday:
+    - "2pm - 5pm"
+  Thursday:
+    - "3pm - 5:30pm"
+  Friday:
+    - "none"
+  Saturday:
+    - '9am - 4pm'
+  Sunday:
+    - '9am - 4pm'
+notes:
+  - "Prefer no cycling workouts on Fridays due to personal training"
+  - "Saturday workouts should be easier since I will be sore from Friday's workout"
