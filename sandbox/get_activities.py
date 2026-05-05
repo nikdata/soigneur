@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.models.activity import Activity, ZoneTime
 
 current_date = date.today()
-begin_date = (current_date - timedelta(days=10)).strftime("%Y-%m-%d")
+begin_date = (current_date - timedelta(days=5)).strftime("%Y-%m-%d")
 end_date = current_date.strftime("%Y-%m-%d")
 
 
@@ -57,6 +57,7 @@ async def get_list_of_activities():
     activity_types = {"VirtualRide", "Ride", "WeightTraining"}
     filtered_activities = [a for a in activity if a.type in activity_types]
 
+    # return activity
     return filtered_activities
     # return data
 

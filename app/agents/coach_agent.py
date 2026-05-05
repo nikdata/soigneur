@@ -65,6 +65,7 @@ Structured workouts are always indoors. Outdoor rides are always unstructured.
 - Maximum 3-4 sentences for simple questions.
 - Only elaborate when the user asks for reasoning or details.
 - Do not volunteer scheduling logistics unless asked.
+- If the user says "refresh" or "check again", re-fetch all data from tools instead of using previously fetched results.
 
 ## Daily Briefing Format
 When giving the daily briefing, use this format:
