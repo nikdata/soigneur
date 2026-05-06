@@ -12,9 +12,15 @@ from pathlib import Path
 import yaml
 
 from app.config import get_settings
+from app.models.briefing import BriefingResponse
 from app.services.goals_service import fetch_goals as get_goals
-from app.services.trainerroad_service import get_planned_workouts as get_upcoming_workouts
-from app.services.weather_service import fetch_weather_forecast as get_weather, resolve_zipcode
+from app.services.trainerroad_service import (
+    get_planned_workouts as get_upcoming_workouts,
+)
+from app.services.weather_service import (
+    fetch_weather_forecast as get_weather,
+    resolve_zipcode,
+)
 from app.services.activity_service import get_list_of_activities as get_activities
 
 # load rider profile once at import time
@@ -28,7 +34,7 @@ with open(profile_path) as f:
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = f"""\
-Today's date is {date.today().isoformat()}. Current local time is {datetime.now().strftime('%I:%M %p')}.
+Today's date is {date.today().isoformat()}. Current local time is {datetime.now().strftime("%I:%M %p")}.
 
 ## Rider Profile
 {yaml.dump(rider_profile, default_flow_style=False)}
@@ -68,16 +74,13 @@ Structured workouts are always indoors. Outdoor rides are always unstructured.
 - If the user says "refresh" or "check again", re-fetch all data from tools instead of using previously fetched results.
 
 ## Daily Briefing Format
-When giving the daily briefing, use this format:
+When giving the daily briefing, populate the structured response fields:
 
-Today's Workout
-<what's scheduled or "rest day">
-
-Coach's Recommendation
-<what to do and why, concise>
-
-About Tomorrow
-<flag any mismatches, suggest alternatives if needed>
+- **today**: Put everything about today here — what's scheduled (or "rest day"),
+  the coach's recommendation, and the reasoning. Be concise.
+- **tomorrow**: Put any flags or alternatives for tomorrow's workout here.
+  If tomorrow's workout aligns with the rider's goals and there is nothing to
+  flag, set this to null.
 """
 
 # ---------------------------------------------------------------------------
@@ -85,50 +88,72 @@ About Tomorrow
 # ---------------------------------------------------------------------------
 
 coach_agent = Agent(
-    'anthropic:claude-sonnet-4-6',
+    "anthropic:claude-sonnet-4-6",
     instructions=SYSTEM_PROMPT,
+)
+
+briefing_agent = Agent(
+    "anthropic:claude-sonnet-4-6",
+    instructions=SYSTEM_PROMPT,
+    output_type=BriefingResponse,
 )
 
 # ---------------------------------------------------------------------------
 # TOOLS — thin wrappers around service functions
 # ---------------------------------------------------------------------------
 
-@coach_agent.tool_plain
-async def fetch_goals() -> str:
-    """
-    Fetch the rider's goals which includes events with dates, types, priorities, and target outcomes.
-    """
+
+async def _fetch_goals() -> str:
+    """Fetch the rider's goals including events with dates, types, priorities, and target outcomes."""
     goals = await get_goals()
     return "\n".join(g.model_dump_json() for g in goals)
 
-@coach_agent.tool_plain
-async def fetch_weather() -> str:
-    """
-    Fetch the weather forecast for the rider's location.
-    """
+
+async def _fetch_weather() -> str:
+    """Fetch the weather forecast for the rider's location."""
     coords = await resolve_zipcode()
     forecast = await get_weather(coords.lat, coords.lon)
     return forecast.model_dump_json()
 
-@coach_agent.tool_plain
-async def fetch_upcoming_workouts() -> str:
-    """
-    Fetch the upcoming workouts for the rider.
-    """
+
+async def _fetch_upcoming_workouts() -> str:
+    """Fetch the upcoming workouts for the rider."""
     workouts = await get_upcoming_workouts()
     return "\n".join(w.model_dump_json() for w in workouts)
 
-@coach_agent.tool_plain
-async def fetch_activities() -> str:
-    """
-    Fetch the recent activities for the rider.
-    """
+
+async def _fetch_activities() -> str:
+    """Fetch the recent activities for the rider."""
     activities = await get_activities()
     return "\n".join(a.model_dump_json() for a in activities)
+
+
+for _agent in (coach_agent, briefing_agent):
+
+    @_agent.tool_plain
+    async def fetch_goals() -> str:
+        """Fetch the rider's goals which includes events with dates, types, priorities, and target outcomes."""
+        return await _fetch_goals()
+
+    @_agent.tool_plain
+    async def fetch_weather() -> str:
+        """Fetch the weather forecast for the rider's location."""
+        return await _fetch_weather()
+
+    @_agent.tool_plain
+    async def fetch_upcoming_workouts() -> str:
+        """Fetch the upcoming workouts for the rider."""
+        return await _fetch_upcoming_workouts()
+
+    @_agent.tool_plain
+    async def fetch_activities() -> str:
+        """Fetch the recent activities for the rider."""
+        return await _fetch_activities()
 
 # ---------------------------------------------------------------------------
 # CLI LOOP — for testing before wiring up FastAPI
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     message_history = None
@@ -153,5 +178,6 @@ async def main() -> None:
         message_history = result.all_messages()
         print(f"\nCoach: {result.output}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())

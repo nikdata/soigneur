@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="layout">
+    <main class="dashboard">
+        <h1>Soigneur</h1>
+
+        <section class="widget">
+            <h2>Current Briefing</h2>
+
+            <h3 class="widget-subheader">Current Weather</h3>
+            <p class="briefing-text">{{ weather.current.temperature | round(0) | int }}&deg;F &mdash; {{ weather.current.description }}, wind {{ weather.current.wind_speed | round(0) | int }} mph{% if weather.current.wind_gusts > 0 %} with gusts to {{ weather.current.wind_gusts | round(0) | int }} mph{% endif %}.</p>
+
+            <h3 class="widget-subheader">Upcoming Weather</h3>
+            <p class="briefing-text">{{ weather_summary }}</p>
+
+            <h3 class="widget-subheader">Today's Planned Workout</h3>
+            {% if today_workout %}
+            <p class="planned-workout-detail">{{ today_workout.name }}{% if today_workout.duration_minutes %} &mdash; {{ today_workout.duration_minutes }} min{% endif %}{% if today_workout.tss %}, TSS {{ today_workout.tss }}{% endif %}{% if today_workout.intensity_factor %}, IF {{ today_workout.intensity_factor }}{% endif %}</p>
+            {% else %}
+            <p class="planned-workout-detail">Rest Day</p>
+            {% endif %}
+
+            <h3 class="widget-subheader">Coach's Recommendation</h3>
+            <div
+                id="briefing-container"
+                hx-get="/briefing"
+                hx-trigger="load"
+                hx-swap="innerHTML"
+                data-status="Fetching today's briefing..."
+            >
+                <p class="loading">Loading recommendation...</p>
+            </div>
+        </section>
+
+        <div id="tomorrow-container"></div>
+
+        <section class="widget">
+            <h2>Upcoming Workouts</h2>
+            {% if workouts %}
+            <table>
+                <thead>
+                    <tr><th>Date</th><th>Name</th><th>Duration</th></tr>
+                </thead>
+                <tbody>
+                {% for w in workouts %}
+                    <tr>
+                        <td>{{ w.date.strftime('%a %m/%d') }}</td>
+                        <td>{{ w.name }}</td>
+                        <td>{% if w.duration_minutes %}{{ w.duration_minutes }} min{% else %}&mdash;{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No upcoming workouts scheduled.</p>
+            {% endif %}
+        </section>
+
+        <section class="widget">
+            <h2>Recent Activities</h2>
+            {% if activities %}
+            <table>
+                <thead>
+                    <tr><th>Date</th><th>Name</th><th>TSS</th><th>Duration</th></tr>
+                </thead>
+                <tbody>
+                {% for a in activities %}
+                    <tr>
+                        <td>{{ a.start_date_local.strftime('%a %m/%d') }}</td>
+                        <td>{{ a.name }}</td>
+                        <td>{% if a.icu_training_load %}{{ a.icu_training_load | round(0) | int }}{% else %}&mdash;{% endif %}</td>
+                        <td>{{ (a.moving_time / 60) | round(0) | int }} min</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No recent activities.</p>
+            {% endif %}
+        </section>
+
+        <section class="widget">
+            <h2>Goals</h2>
+            {% if goals %}
+            <table>
+                <thead>
+                    <tr><th>Event</th><th>Date</th><th>Type</th><th>Priority</th></tr>
+                </thead>
+                <tbody>
+                {% for g in goals %}
+                    <tr>
+                        <td>{{ g.name }}</td>
+                        <td>{{ g.date.strftime('%b %d, %Y') }}</td>
+                        <td>{{ g.type }}</td>
+                        <td>{{ g.priority }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No goals configured.</p>
+            {% endif %}
+        </section>
+
+    </main>
+
+    <aside class="chat-panel">
+        <h2>Coach Chat</h2>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form
+            hx-post="/chat"
+            hx-target="#chat-messages"
+            hx-swap="beforeend"
+            hx-on::after-request="this.reset()"
+            data-status="Thinking..."
+        >
+            <div class="chat-input">
+                <input type="text" name="message" placeholder="Ask your coach..." autocomplete="off" required>
+                <button type="submit">Send</button>
+            </div>
+        </form>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+<div class="briefing-content">
+    {{ today | safe }}
+</div>
+
+<div id="tomorrow-container" hx-swap-oob="innerHTML">
+{% if tomorrow %}
+<section class="widget">
+    <h2>Tomorrow</h2>
+    <div class="briefing-content">
+        {{ tomorrow | safe }}
+    </div>
+</section>
+{% endif %}
+</div>

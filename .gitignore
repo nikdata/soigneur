@@ -6,3 +6,6 @@
 
 # caches
 __pycache__/
+
+# extras
+prompt.md

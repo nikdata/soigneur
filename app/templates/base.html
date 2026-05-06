@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soigneur</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <div id="status-bar">Ready.</div>
+
+    <script>
+        document.body.addEventListener("htmx:beforeRequest", function(evt) {
+            var status = evt.detail.elt.getAttribute("data-status") || "Loading...";
+            document.getElementById("status-bar").textContent = status;
+        });
+        document.body.addEventListener("htmx:afterRequest", function(evt) {
+            document.getElementById("status-bar").textContent = "Ready.";
+        });
+    </script>
+</body>
+</html>

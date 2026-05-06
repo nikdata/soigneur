@@ -11,6 +11,7 @@ dependencies = [
     "httpx>=0.28.1",
     "icalendar>=7.0.3",
     "jinja2>=3.1.6",
+    "markdown>=3.8",
     "pydantic>=2.13.3",
     "pydantic-settings>=2.12.0",
     "pydantic-ai>=1.88.0",

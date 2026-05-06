@@ -1,0 +1,8 @@
+<div class="chat-msg chat-msg--user">
+    <span class="chat-role">You</span>
+    <p>{{ user_message }}</p>
+</div>
+<div class="chat-msg chat-msg--agent">
+    <span class="chat-role">Coach</span>
+    {{ agent_message | safe }}
+</div>
