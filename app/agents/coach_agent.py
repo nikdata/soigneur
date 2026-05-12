@@ -22,6 +22,7 @@ from app.services.weather_service import (
     resolve_zipcode,
 )
 from app.services.activity_service import get_list_of_activities as get_activities
+from app.services.wellness_service import get_wellness
 
 # load rider profile once at import time
 profile_path = Path(__file__).parent.parent / "config" / "profile.yaml"
@@ -54,7 +55,22 @@ Follow this decision tree when making today's training recommendation:
 3. Check weather and recent activity history:
    - If weather is good and the rider has been doing mostly indoor structured work, recommend an unstructured outdoor ride instead.
    - If weather is bad, recommend the scheduled indoor workout (or the alternative from step 2).
-4. If recent activities show high accumulated load or the rider has had multiple hard days in a row, recommend a rest day regardless of what's scheduled.
+4. Check wellness data for recovery signals:
+   - HRV (rMSSD from Oura — lower is worse)
+   - Sleep score (0-100 from Oura)
+   - Sleep quality (1-5 scale)
+   - Readiness score (0-100 from Oura)
+   - Resting HR (elevated = fatigue signal)
+   - CTL (chronic training load / fitness)
+   - ATL (acute training load / fatigue)
+   - Ramp rate (how fast load is increasing)
+
+   Interpretation guide:
+   - Readiness below 60 or sleep score below 60: lean toward rest or easy outdoor ride
+   - ATL significantly above CTL (high fatigue relative to fitness): reduce intensity
+   - Ramp rate above 7: training load increasing too fast, consider a recovery day
+
+   If recent activities show high accumulated load or the rider has had multiple hard days in a row, recommend a rest day regardless of what's scheduled.
 5. If no workout is scheduled today, check weather and suggest an easy outdoor ride if conditions are good and the rider's schedule allows it. Otherwise, confirm it's a rest day.
 6. After today's recommendation, check tomorrow's scheduled workout.
    - If it does not align with the rider's goals, flag it and propose an alternative workout type.
@@ -62,6 +78,13 @@ Follow this decision tree when making today's training recommendation:
    - The rider will manually update TrainerRoad.
 
 Structured workouts are always indoors. Outdoor rides are always unstructured.
+
+## Available Tools
+- Rider goals (events, priorities, target outcomes)
+- Weather forecast for the rider's location
+- Upcoming scheduled workouts from TrainerRoad
+- Recent completed activities
+- Today's wellness data (HRV, sleep, readiness, training load)
 
 ## Response Style
 - No emojis.
@@ -128,6 +151,12 @@ async def _fetch_activities() -> str:
     return "\n".join(a.model_dump_json() for a in activities)
 
 
+async def _fetch_wellness() -> str:
+    """Fetch recent wellness data (HRV, sleep, readiness, training load)."""
+    wellness = await get_wellness()
+    return "\n".join(w.model_dump_json() for w in wellness)
+
+
 for _agent in (coach_agent, briefing_agent):
 
     @_agent.tool_plain
@@ -149,6 +178,11 @@ for _agent in (coach_agent, briefing_agent):
     async def fetch_activities() -> str:
         """Fetch the recent activities for the rider."""
         return await _fetch_activities()
+
+    @_agent.tool_plain
+    async def fetch_wellness() -> str:
+        """Fetch recent wellness data (HRV, sleep, readiness, training load)."""
+        return await _fetch_wellness()
 
 # ---------------------------------------------------------------------------
 # CLI LOOP — for testing before wiring up FastAPI
