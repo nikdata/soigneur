@@ -40,8 +40,9 @@ async def resolve_zipcode() -> GeoLocation:
     base_url = "https://nominatim.openstreetmap.org/search"
     params = {"postalcode": postal_code, "country": "United States", "format": "json"}
 
-    # async client to make the request
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    # Nominatim requires a User-Agent per their usage policy
+    headers = {"User-Agent": "Soigneur/1.0 (web@niks.me)"}
+    async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
         try:
             response = await client.get(base_url, params=params)
             response.raise_for_status()
